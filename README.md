@@ -1,3 +1,51 @@
-# kvalchemy
+# KVAlchemy
 
-A repo for kvalchemy
+KVAlchemy is a SQLAlchemy-based key-vault store. It has the ability to get/set values based off a string key, an optional string tag, and an optional expiration time. Additionally it has a built-in ability to memoize function results to the store.
+
+## Example
+
+```
+from kvalchemy import KVAlchemy
+
+# Setup. Supports any available sqlalchemy backend.
+k = KVAlchemy('sqlite://')
+
+# Set/Get
+k.set("hello", "world")
+assert k.get("hello") == "world"
+
+# Default values
+assert k.get("hello again", "default") == "default"
+
+# memoize example
+import time
+
+@k.memoize()
+def func():
+    time.sleep(1)
+
+func() # Will sleep
+func() # Won't sleep
+
+func.cache_clear()
+func() # Will sleep
+
+# proxy example
+proxy = k.get_proxy('pizza')
+proxy.set('pie')
+assert proxy.get() == 'pie'
+proxy.delete()
+assert proxy.get('default') == 'default'
+```
+
+## Installation
+
+On Python 3.8 or later:
+
+```
+pip install kvalchemy
+```
+
+## More Documentation
+
+For more documentation visit: https://csm10495.github.io/kvalchemy
