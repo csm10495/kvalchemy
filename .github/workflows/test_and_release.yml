@@ -9,18 +9,8 @@ jobs:
       python-versions: '["3.8", "3.9", "3.10", "3.11", "3.12"]'
       # by default, operating-systems points to ubuntu/mac/windows
 
-  markdown-autodocs:
-    needs: test
-    if: github.event_name != 'pull_request'
-    uses: csm10495/actions/.github/workflows/markdown-autodocs.yml@master
-    with:
-      python-version: '3.11'
-      operating-system: 'ubuntu-latest'
-      cmd-to-run: 'kvalchemy --help > help_output.txt'
-      file-to-update: README.md
-
   version-bump:
-    needs: markdown-autodocs
+    needs: test
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     uses: csm10495/actions/.github/workflows/version-bump.yml@master
 
