@@ -22,16 +22,6 @@ jobs:
       python-version: '3.11'
       operating-system: 'ubuntu-latest'
 
-  pyinstaller:
-    needs: pdoc3
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
-    uses: csm10495/actions/.github/workflows/pyinstaller.yml@master
-    with:
-      python-version: '3.11'
-      operating-system: 'windows-latest'
-      executable-name: kvalchemy.exe
-      entrypoint-file: kvalchemy/__main__.py
-
   pypi-upload:
     needs: pdoc3
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
@@ -41,6 +31,6 @@ jobs:
     secrets: inherit
 
   github-release:
-    needs: pyinstaller
+    needs: pypi-upload
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     uses: csm10495/actions/.github/workflows/github-release.yml@master
