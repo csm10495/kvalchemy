@@ -1,3 +1,3 @@
-# [PROJECT]
+# kvalchemy
 
-A repo for [PROJECT]
+A repo for kvalchemy
