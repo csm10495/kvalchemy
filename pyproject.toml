@@ -1,6 +1,6 @@
 [project]
 name = "kvalchemy"
-description = "A project for kvalchemy"
+description = "A SQLAlchemy based Key-Value store."
 dynamic = ["version"]
 authors = [{name = "csm10495", email = "csm10495@gmail.com"}]
 license = {text = "MIT License"}
