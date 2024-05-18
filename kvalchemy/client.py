@@ -31,7 +31,7 @@ class KVAlchemy:
         with an option to ensure the necessary db models are created.
         """
         self.url = url
-        self._engine = create_engine(url)
+        self._engine = create_engine(url, pool_pre_ping=True)
 
         if create_models:
             Base.metadata.create_all(self._engine)
