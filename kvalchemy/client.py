@@ -8,7 +8,7 @@ from typing import Any, Callable, Iterable, Union
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
-from kvalchemy.models import Base, KVStore, ValueMixIn
+from kvalchemy.models import KEY_MAX_LENGTH, TAG_MAX_LENGTH, Base, KVStore, ValueMixIn
 from kvalchemy.proxy import Proxy
 from kvalchemy.time import ExpirationType, to_expire
 from kvalchemy.values import ENOVAL
@@ -179,14 +179,12 @@ class KVAlchemy:
         """
         return Proxy(self, key, default, tag)
 
-    def _delete_startswith(self, key: str, tag: str):
+    def delete_tag(self, tag: str) -> None:
         """
-        Deletes all keys that start with the given key but fall under the given tag.
+        Deletes all keys under a given tag.
         """
         with self.session() as session:
-            session.query(KVStore).filter(
-                KVStore.key.startswith(key), KVStore.tag == tag
-            ).delete()
+            session.query(KVStore).filter(KVStore.tag == tag).delete()
 
     def memoize(
         self,
@@ -218,10 +216,14 @@ class KVAlchemy:
             func = None
 
         def inner(func):
-            base_key = f"memoize.{func.__module__}_{func.__qualname__}_{expire!s}"
+            # Warning: we're truncating to fit the tag
+            tag = f"memoize.{func.__module__}_{func.__qualname__}_{expire!s}"[
+                :TAG_MAX_LENGTH
+            ]
 
             def wrapper(*args, **kwargs):
-                key = f"{base_key}_{args!s}_{kwargs!s}"
+                # Warning: we're truncating to fit the key
+                key = f"{args!s}_{kwargs!s}"[:KEY_MAX_LENGTH]
 
                 # if you overwrite inner.expire_if then the callable would only get evaluated once
                 # ... so don't do that.
@@ -236,7 +238,7 @@ class KVAlchemy:
                 result = NO_RESULT
                 if try_cache:
                     try:
-                        result = self.get(key, tag=MEMOIZE_TAG)
+                        result = self.get(key, tag=tag)
                     except KeyError:
                         pass
                 else:
@@ -257,11 +259,11 @@ class KVAlchemy:
                             f"skip_saving_to_cache_if is forcing us to not save to cache the value for key: {key}"
                         )
                     else:
-                        self.set(key, result, tag=MEMOIZE_TAG, expire=expire)
+                        self.set(key, result, tag=tag, expire=expire)
 
                 return result
 
-            wrapper.cache_clear = lambda: self._delete_startswith(base_key, MEMOIZE_TAG)
+            wrapper.cache_clear = lambda: self.delete_tag(tag)
             return wrapper
 
         inner.expire_if = expire_if

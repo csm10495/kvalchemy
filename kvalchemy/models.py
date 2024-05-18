@@ -5,9 +5,12 @@ from datetime import datetime
 
 from sqlalchemy import Column, ColumnElement, UniqueConstraint, or_
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.types import PickleType
+from sqlalchemy.types import PickleType, Unicode
 
 from kvalchemy.time import db_now
+
+KEY_MAX_LENGTH = 256
+TAG_MAX_LENGTH = 256
 
 
 class Base(DeclarativeBase):
@@ -38,8 +41,8 @@ class KVStore(Base, ValueMixIn):
 
     __table_args__ = (UniqueConstraint("key", "tag", name="key_tag_unique"),)
 
-    key: Mapped[str] = mapped_column(primary_key=True)
-    tag: Mapped[str] = mapped_column(primary_key=True)
+    key: Mapped[str] = Column(Unicode(KEY_MAX_LENGTH), primary_key=True)
+    tag: Mapped[str] = Column(Unicode(TAG_MAX_LENGTH), primary_key=True)
 
     # Naive datetime (though expected to be UTC)
     expire: Mapped[datetime] = mapped_column(nullable=True)
