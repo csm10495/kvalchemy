@@ -208,12 +208,14 @@ class KVAlchemy:
         &#34;&#34;&#34;
         return Proxy(self, key, default, tag)
 
-    def delete_tag(self, tag: str) -&gt; None:
+    def delete_tag(self, tag: str) -&gt; int:
         &#34;&#34;&#34;
         Deletes all keys under a given tag.
+
+        Returns the number of keys deleted.
         &#34;&#34;&#34;
         with self.session() as session:
-            session.query(KVStore).filter(KVStore.tag == tag).delete()
+            return session.query(KVStore).filter(KVStore.tag == tag).delete()
 
     def memoize(
         self,
@@ -486,12 +488,14 @@ with an option to ensure the necessary db models are created.</p></div>
         &#34;&#34;&#34;
         return Proxy(self, key, default, tag)
 
-    def delete_tag(self, tag: str) -&gt; None:
+    def delete_tag(self, tag: str) -&gt; int:
         &#34;&#34;&#34;
         Deletes all keys under a given tag.
+
+        Returns the number of keys deleted.
         &#34;&#34;&#34;
         with self.session() as session:
-            session.query(KVStore).filter(KVStore.tag == tag).delete()
+            return session.query(KVStore).filter(KVStore.tag == tag).delete()
 
     def memoize(
         self,
@@ -625,20 +629,23 @@ with an option to ensure the necessary db models are created.</p></div>
 </details>
 </dd>
 <dt id="kvalchemy.client.KVAlchemy.delete_tag"><code class="name flex">
-<span>def <span class="ident">delete_tag</span></span>(<span>self, tag: str) ‑> None</span>
+<span>def <span class="ident">delete_tag</span></span>(<span>self, tag: str) ‑> int</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Deletes all keys under a given tag.</p></div>
+<div class="desc"><p>Deletes all keys under a given tag.</p>
+<p>Returns the number of keys deleted.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def delete_tag(self, tag: str) -&gt; None:
+<pre><code class="python">def delete_tag(self, tag: str) -&gt; int:
     &#34;&#34;&#34;
     Deletes all keys under a given tag.
+
+    Returns the number of keys deleted.
     &#34;&#34;&#34;
     with self.session() as session:
-        session.query(KVStore).filter(KVStore.tag == tag).delete()</code></pre>
+        return session.query(KVStore).filter(KVStore.tag == tag).delete()</code></pre>
 </details>
 </dd>
 <dt id="kvalchemy.client.KVAlchemy.get"><code class="name flex">
