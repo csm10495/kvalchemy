@@ -231,6 +231,20 @@ def test_get_proxy(kvalchemy):
     assert proxy.tag == "tag"
 
 
+def test_delete_tag(kvalchemy):
+    kvalchemy.set("key", "value", "tag")
+    kvalchemy.set("key2", "value2", "tag")
+    assert len(kvalchemy) == 2
+    kvalchemy.set("key", "value", "tag2")
+    assert len(kvalchemy) == 3
+
+    assert kvalchemy.delete_tag("tag") == 2
+    assert len(kvalchemy) == 1
+    assert kvalchemy.delete_tag("tag2") == 1
+    assert len(kvalchemy) == 0
+    assert kvalchemy.delete_tag("tag3") == 0
+
+
 def test_memoize_simple(kvalchemy):
     global ret_val
 

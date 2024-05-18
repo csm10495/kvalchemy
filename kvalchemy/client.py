@@ -179,12 +179,14 @@ class KVAlchemy:
         """
         return Proxy(self, key, default, tag)
 
-    def delete_tag(self, tag: str) -> None:
+    def delete_tag(self, tag: str) -> int:
         """
         Deletes all keys under a given tag.
+
+        Returns the number of keys deleted.
         """
         with self.session() as session:
-            session.query(KVStore).filter(KVStore.tag == tag).delete()
+            return session.query(KVStore).filter(KVStore.tag == tag).delete()
 
     def memoize(
         self,
