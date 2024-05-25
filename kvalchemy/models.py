@@ -38,7 +38,7 @@ class KVStore(Base, ValueMixIn):
     """
 
     # __tablename__ = "kvstore_v2"
-    # __tablename__ = "kvstore"
+    __tablename__ = "kvstore"
 
     __table_args__ = (UniqueConstraint("key", "tag", name="key_tag_unique"),)
 
