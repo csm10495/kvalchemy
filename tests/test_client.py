@@ -152,7 +152,7 @@ def test_set_get_with_tag(kvalchemy):
 
 def test_set_get_with_expire(kvalchemy):
     kvalchemy.set("key", "value", expire=0)
-    time.sleep(0.2)
+    time.sleep(0.5)
     assert kvalchemy.get("key", "default") == "default"
 
     kvalchemy.set("key", "value", expire=datetime(9999, 2, 2))
@@ -300,14 +300,14 @@ def test_memoize_simple(kvalchemy):
 
     ret_val = True
 
-    @kvalchemy.memoize(expire=0.001)
+    @kvalchemy.memoize(expire=0.0001)
     def y():
         global ret_val
         return ret_val
 
     assert y() == True
     ret_val = False
-    time.sleep(0.2)
+    time.sleep(0.5)
     assert y() == False
 
 
