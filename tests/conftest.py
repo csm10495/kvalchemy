@@ -1,5 +1,6 @@
 import atexit
 import logging
+import os
 import shutil
 import subprocess
 from functools import lru_cache
@@ -24,9 +25,15 @@ def has_docker() -> bool:
     """
     if shutil.which("docker"):
         proc = subprocess.run(
-            ["docker", "ps"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            ["docker", "info", "-f", "{{ .OSType }}"], capture_output=True, text=True
         )
-        return proc.returncode == 0
+
+        if proc.stdout.strip() == "linux":
+            proc = subprocess.run(
+                ["docker", "ps"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            return proc.returncode == 0
+
     return False
 
 
@@ -35,9 +42,13 @@ def _start_mysqld_docker() -> None:
     """
     Starts the mysqld docker container
     """
+    if os.getenv("GITHUB_ACTIONS"):
+        name_param = ""
+    else:
+        name_param = "--name kvalchemy-mysqld"
     # start container
     subprocess.run(
-        'docker run --name kvalchemy-mysqld -e "MYSQL_ALLOW_EMPTY_PASSWORD=1" -e "MYSQL_PASSWORD=test" -e "MYSQL_USER=test" -e "MYSQL_DATABASE=test" -d -p 52000:3306 mysql:8',
+        f'docker run {name_param} -e "MYSQL_ALLOW_EMPTY_PASSWORD=1" -e "MYSQL_PASSWORD=test" -e "MYSQL_USER=test" -e "MYSQL_DATABASE=test" -d -p 52000:3306 mysql:8',
         shell=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
