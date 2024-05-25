@@ -1,14 +1,13 @@
 import atexit
 import logging
+import shutil
 import subprocess
-import time
 from functools import lru_cache
 
 import backoff
 import pytest
-from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.exc import OperationalError, ProgrammingError, SQLAlchemyError
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.exc import OperationalError
 
 from kvalchemy import KVAlchemy, KVStore
 
@@ -22,10 +21,12 @@ def has_docker() -> bool:
     """
     Checks if docker is available and ready to be used
     """
-    proc = subprocess.run(
-        ["docker", "ps"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
-    return proc.returncode == 0
+    if shutil.which("docker"):
+        proc = subprocess.run(
+            ["docker", "ps"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        return proc.returncode == 0
+    return False
 
 
 @lru_cache(maxsize=None)
