@@ -3,6 +3,7 @@ import logging
 import shutil
 import subprocess
 from functools import lru_cache
+from typing import List
 
 import backoff
 import pytest
@@ -69,7 +70,7 @@ def _wait_for_mysql_stability():
 
 
 @lru_cache(maxsize=None)
-def get_sqlalchemy_urls(pytestconfig) -> list[str]:
+def get_sqlalchemy_urls(pytestconfig) -> List[str]:
     """
     Used to parameterize our testing.
     If we have docker available, sets up a mysqld container for our testing.
