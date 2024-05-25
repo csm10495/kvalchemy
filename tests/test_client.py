@@ -1,4 +1,5 @@
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from unittest.mock import patch
 from uuid import UUID, uuid4
@@ -73,25 +74,25 @@ def test_session_commit_true_delete_expired_true(kvalchemy, kvstore):
         assert session.query(KVStore).count() == 1
 
 
-# figure out
-def test_session_commit_true_delete_expired_true_cross(kvalchemy):
+def test_session_access_thrash(kvalchemy):
     if "sqlite" in kvalchemy.url:
-        pytest.skip("sqlite doesn't support cross-session transactions")
+        pytest.skip("sqlite backend doesn't support multiple accesses at once")
 
-    def thrash():
-        kva = KVAlchemy(kvalchemy.url)
+    kva = KVAlchemy(kvalchemy.url)
+
+    def thrash(kva):
         for i in range(10):
             kva.set("key", i)
-
-    from concurrent.futures import ThreadPoolExecutor
 
     futures = []
     with ThreadPoolExecutor() as executor:
         for _ in range(100):
-            futures.append(executor.submit(thrash))
+            futures.append(executor.submit(thrash, kva))
 
         for f in futures:
             f.result()
+
+    assert kva.get("key") == 9
 
 
 def test_session_commit_false(kvalchemy, kvstore):

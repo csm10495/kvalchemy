@@ -2,6 +2,7 @@ import atexit
 import logging
 import subprocess
 import time
+from functools import lru_cache
 
 import backoff
 import pytest
@@ -16,6 +17,7 @@ log = logging.getLogger(__name__)
 DOCKER_MYSQL_URL = "mysql+pymysql://test:test@localhost:52000/test?charset=utf8mb4"
 
 
+@lru_cache(maxsize=None)
 def has_docker() -> bool:
     """
     Checks if docker is available and ready to be used
@@ -24,6 +26,22 @@ def has_docker() -> bool:
         ["docker", "ps"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
     return proc.returncode == 0
+
+
+@lru_cache(maxsize=None)
+def _start_mysqld_docker() -> None:
+    """
+    Starts the mysqld docker container
+    """
+    # start container
+    subprocess.run(
+        'docker run --name kvalchemy-mysqld -e "MYSQL_ALLOW_EMPTY_PASSWORD=1" -e "MYSQL_PASSWORD=test" -e "MYSQL_USER=test" -e "MYSQL_DATABASE=test" -d -p 52000:3306 mysql:8',
+        shell=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).check_returncode()
+    atexit.register(_stop_mysqld_docker)
+    _wait_for_mysql_stability()
 
 
 def _stop_mysqld_docker() -> None:
@@ -49,7 +67,8 @@ def _wait_for_mysql_stability():
     inspect(engine).get_table_names()
 
 
-def get_sqlalchemy_urls() -> list[str]:
+@lru_cache(maxsize=None)
+def get_sqlalchemy_urls(pytestconfig) -> list[str]:
     """
     Used to parameterize our testing.
     If we have docker available, sets up a mysqld container for our testing.
@@ -58,27 +77,20 @@ def get_sqlalchemy_urls() -> list[str]:
     """
     urls = ["sqlite:///:memory:"]
 
-    if has_docker():
+    if pytestconfig.getoption("--sqlite-only"):
+        log.info("Skipping mysql setup because of sqlite-only")
+    elif not has_docker():
+        log.warning("Docker not available, not adding tests that require it.")
+    else:
         # don't care if this succeeds or not
         _stop_mysqld_docker()
-
-        # start container
-        subprocess.run(
-            'docker run --name kvalchemy-mysqld -e "MYSQL_ALLOW_EMPTY_PASSWORD=1" -e "MYSQL_PASSWORD=test" -e "MYSQL_USER=test" -e "MYSQL_DATABASE=test" -d -p 52000:3306 mysql:8',
-            shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        ).check_returncode()
-        atexit.register(_stop_mysqld_docker)
-        _wait_for_mysql_stability()
+        _start_mysqld_docker()
         urls.append(DOCKER_MYSQL_URL)
-    else:
-        log.warning("Docker not available, not adding tests that require it.")
 
     return urls
 
 
-@pytest.fixture(scope="function", params=get_sqlalchemy_urls())
+@pytest.fixture(scope="function")
 def kvalchemy(request):
     """
     Fixture to get a kvalchemy instance for testing.
@@ -104,3 +116,17 @@ def kvstore():
         value="value",
         tag="",
     )
+
+
+def pytest_generate_tests(metafunc):
+    if "kvalchemy" in metafunc.fixturenames:
+        metafunc.parametrize(
+            "kvalchemy", get_sqlalchemy_urls(metafunc.config), indirect=True
+        )
+
+
+def pytest_addoption(parser):
+    """
+    Used to add options to pytest via the command line.
+    """
+    parser.addoption("--sqlite-only", action="store_true", default=False)

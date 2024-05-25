@@ -5,7 +5,9 @@ import contextlib
 import logging
 from typing import Any, Callable, Iterable, Union
 
+import backoff
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from kvalchemy.models import KEY_MAX_LENGTH, TAG_MAX_LENGTH, Base, KVStore, ValueMixIn
@@ -15,7 +17,10 @@ from kvalchemy.values import ENOVAL
 
 log = logging.getLogger(__name__)
 
-MEMOIZE_TAG = "__memoize__"
+
+retry_integrity_errors = backoff.on_exception(
+    backoff.constant, IntegrityError, interval=0.1, max_time=30
+)
 
 
 class KVAlchemy:
@@ -88,6 +93,7 @@ class KVAlchemy:
                     # commit the delete transaction
                     session.commit()
 
+    @retry_integrity_errors
     def get(
         self,
         key: str,
@@ -122,6 +128,7 @@ class KVAlchemy:
 
             return result.value
 
+    @retry_integrity_errors
     def set(
         self, key: str, value: Any, tag: str = "", expire: ExpirationType = None
     ) -> None:
@@ -136,6 +143,7 @@ class KVAlchemy:
                 KVStore(key=key, value=value, tag=tag, expire=to_expire(expire))
             )
 
+    @retry_integrity_errors
     def delete(self, key: str, tag: str = "") -> None:
         """
         Deletes the given key/tag combo from the store.
@@ -171,6 +179,7 @@ class KVAlchemy:
 
         return value
 
+    @retry_integrity_errors
     def clear(self) -> None:
         """
         Clears all key-value pairs from the store.
@@ -184,6 +193,7 @@ class KVAlchemy:
         """
         return Proxy(self, key, default, tag)
 
+    @retry_integrity_errors
     def delete_tag(self, tag: str) -> int:
         """
         Deletes all keys under a given tag.
