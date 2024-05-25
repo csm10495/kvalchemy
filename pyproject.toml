@@ -22,7 +22,7 @@ documentation  = "https://csm10495.github.io/kvalchemy"
 
 [project.optional-dependencies]
 dev = [
-    "PyMySQL",
+    "PyMySQL[rsa]",
     "pytest"
 ]
 
