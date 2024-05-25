@@ -20,6 +20,12 @@ homepage = "https://github.com/csm10495/kvalchemy"
 repository = "https://github.com/csm10495/kvalchemy"
 documentation  = "https://csm10495.github.io/kvalchemy"
 
+[project.optional-dependencies]
+dev = [
+    "PyMySQL",
+    "pytest"
+]
+
 [project.readme]
 file = "README.md"
 content-type = "text/markdown"
@@ -33,7 +39,7 @@ version = {attr = "kvalchemy.__version__"}
 
 [tool.pytest.ini_options]
 pythonpath = [
-  "."
+    "."
 ]
 
 [build-system]

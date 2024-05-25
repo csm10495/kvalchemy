@@ -76,12 +76,17 @@ class KVAlchemy:
             yield session
 
             if commit:
+                # End the user's session via commit.
+                session.commit()
+
                 if delete_expired:
+                    # Now we're starting a new transaction to delete expired keys.
                     session.query(KVStore).filter(
                         ~KVStore.non_expired_filter()
                     ).delete()
 
-                session.commit()
+                    # commit the delete transaction
+                    session.commit()
 
     def get(
         self,

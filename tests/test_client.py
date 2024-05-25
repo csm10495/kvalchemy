@@ -73,6 +73,27 @@ def test_session_commit_true_delete_expired_true(kvalchemy, kvstore):
         assert session.query(KVStore).count() == 1
 
 
+# figure out
+def test_session_commit_true_delete_expired_true_cross(kvalchemy):
+    if "sqlite" in kvalchemy.url:
+        pytest.skip("sqlite doesn't support cross-session transactions")
+
+    def thrash():
+        kva = KVAlchemy(kvalchemy.url)
+        for i in range(10):
+            kva.set("key", i)
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    futures = []
+    with ThreadPoolExecutor() as executor:
+        for _ in range(100):
+            futures.append(executor.submit(thrash))
+
+        for f in futures:
+            f.result()
+
+
 def test_session_commit_false(kvalchemy, kvstore):
     with kvalchemy.session(commit=False) as session:
         session.add(kvstore)
@@ -130,7 +151,7 @@ def test_set_get_with_tag(kvalchemy):
 
 def test_set_get_with_expire(kvalchemy):
     kvalchemy.set("key", "value", expire=0)
-    time.sleep(0.1)
+    time.sleep(0.2)
     assert kvalchemy.get("key", "default") == "default"
 
     kvalchemy.set("key", "value", expire=datetime(9999, 2, 2))
@@ -285,7 +306,7 @@ def test_memoize_simple(kvalchemy):
 
     assert y() == True
     ret_val = False
-    time.sleep(0.1)
+    time.sleep(0.2)
     assert y() == False
 
 
