@@ -354,3 +354,16 @@ def test_memoize_skip_saving_to_cache_if(kvalchemy):
         return uuid4()
 
     assert len({y() for _ in range(10)}) == 4
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        [1] * 1000,
+        [None] * 60000,
+        list(range(10)) * 100000,
+    ],
+)
+def test_big_value(kvalchemy, value):
+    kvalchemy.set("key", value)
+    assert kvalchemy.get("key") == value

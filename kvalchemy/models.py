@@ -4,8 +4,9 @@ Home to models for KVAlchemy.
 from datetime import datetime
 
 from sqlalchemy import Column, ColumnElement, UniqueConstraint, or_
+from sqlalchemy.dialects.mysql import LONGBLOB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.types import PickleType, Unicode
+from sqlalchemy.types import LargeBinary, PickleType, Unicode
 
 from kvalchemy.time import db_now
 
@@ -26,7 +27,9 @@ class ValueMixIn:
     A mixin used to correspond with an object with a value attribute
     """
 
-    value = Column("value", PickleType)
+    value = Column(
+        "value", PickleType(impl=LargeBinary().with_variant(LONGBLOB, "mysql"))
+    )
 
     def __init__(self, value):
         self.value = value

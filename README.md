@@ -46,6 +46,17 @@ On Python 3.8 or later:
 pip install kvalchemy
 ```
 
+## Versioning
+
+```
+Note that the database format is stable across the same patch version.
+
+For example: Version 0.0.1 will be fully compatible with all releases in the 0.0.X family.
+Though Version 0.1.0 may not be directly compatible without a manual data migration.
+
+Make sure to pin the version family you want: kvalachemy<X.(Y+1).0
+```
+
 ## More Documentation
 
 For more documentation visit: https://csm10495.github.io/kvalchemy
