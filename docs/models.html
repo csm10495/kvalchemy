@@ -33,8 +33,9 @@ Home to models for KVAlchemy.
 from datetime import datetime
 
 from sqlalchemy import Column, ColumnElement, UniqueConstraint, or_
+from sqlalchemy.dialects.mysql import LONGBLOB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.types import PickleType, Unicode
+from sqlalchemy.types import LargeBinary, PickleType, Unicode
 
 from kvalchemy.time import db_now
 
@@ -55,7 +56,9 @@ class ValueMixIn:
     A mixin used to correspond with an object with a value attribute
     &#34;&#34;&#34;
 
-    value = Column(&#34;value&#34;, PickleType)
+    value = Column(
+        &#34;value&#34;, PickleType(impl=LargeBinary().with_variant(LONGBLOB, &#34;mysql&#34;))
+    )
 
     def __init__(self, value):
         self.value = value
@@ -319,7 +322,9 @@ def non_expired_filter(cls) -&gt; ColumnElement[bool]:
     A mixin used to correspond with an object with a value attribute
     &#34;&#34;&#34;
 
-    value = Column(&#34;value&#34;, PickleType)
+    value = Column(
+        &#34;value&#34;, PickleType(impl=LargeBinary().with_variant(LONGBLOB, &#34;mysql&#34;))
+    )
 
     def __init__(self, value):
         self.value = value</code></pre>
