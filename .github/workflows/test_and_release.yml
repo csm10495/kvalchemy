@@ -8,6 +8,7 @@ jobs:
     with:
       python-versions: '["3.8", "3.9", "3.10", "3.11", "3.12"]'
       install-dev-requirements: true
+      pre-install-script: "./pre-install-ci.sh"
       # by default, operating-systems points to ubuntu/mac/windows
 
   version-bump:
