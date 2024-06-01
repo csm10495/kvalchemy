@@ -2,7 +2,8 @@
 
 # cheap mac detection
 if which brew; then
-    xcode-select --install
+    brew install openssl
+    brew link --force openssl
 
     # https://github.com/pymssql/pymssql/issues/372#issuecomment-309950321
     brew install freetds
