@@ -5,7 +5,7 @@ import socket
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 
 import backoff
 import pytest
@@ -89,7 +89,7 @@ class StartOnceStopAtExitDockerContainer:
         engine = create_engine(self.SQL_URL)
         inspect(engine).get_table_names()
 
-    def start(self) -> str | None:
+    def start(self) -> Optional[str]:
         """
         Returns sqlalchemy url after starting the container and waiting for stability.
         Returns None if we can't use docker.
