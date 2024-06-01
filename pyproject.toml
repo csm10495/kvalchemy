@@ -23,10 +23,10 @@ documentation  = "https://csm10495.github.io/kvalchemy"
 [project.optional-dependencies]
 dev = [
     "func-timeout",
-    "oracledb",
+    'oracledb',
     "psycopg2-binary",
     "PyMySQL[rsa]",
-    "pymssql",
+    'pymssql; platform_system != "Darwin"',
     "pytest"
 ]
 
