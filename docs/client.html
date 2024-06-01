@@ -51,6 +51,8 @@ retry_integrity_errors = backoff.on_exception(
     backoff.constant, IntegrityError, interval=0.1, max_time=30
 )
 
+DEFAULT_TAG = &#34;__default__&#34;
+
 
 class KVAlchemy:
     &#34;&#34;&#34;
@@ -127,7 +129,7 @@ class KVAlchemy:
         self,
         key: str,
         default: Any = ENOVAL,
-        tag: str = &#34;&#34;,
+        tag: str = DEFAULT_TAG,
         return_expiration: bool = False,
     ) -&gt; Any:
         &#34;&#34;&#34;
@@ -159,7 +161,11 @@ class KVAlchemy:
 
     @retry_integrity_errors
     def set(
-        self, key: str, value: Any, tag: str = &#34;&#34;, expire: ExpirationType = None
+        self,
+        key: str,
+        value: Any,
+        tag: str = DEFAULT_TAG,
+        expire: ExpirationType = None,
     ) -&gt; None:
         &#34;&#34;&#34;
         Sets the given key/tag combo to the value provided.
@@ -173,7 +179,7 @@ class KVAlchemy:
             )
 
     @retry_integrity_errors
-    def delete(self, key: str, tag: str = &#34;&#34;) -&gt; None:
+    def delete(self, key: str, tag: str = DEFAULT_TAG) -&gt; None:
         &#34;&#34;&#34;
         Deletes the given key/tag combo from the store.
         &#34;&#34;&#34;
@@ -188,7 +194,7 @@ class KVAlchemy:
             if result is not None:
                 session.delete(result)
 
-    def pop(self, key: str, default: Any = ENOVAL, tag: str = &#34;&#34;) -&gt; None:
+    def pop(self, key: str, default: Any = ENOVAL, tag: str = DEFAULT_TAG) -&gt; None:
         &#34;&#34;&#34;
         Pops the given key/tag combo from the store.
 
@@ -216,16 +222,18 @@ class KVAlchemy:
         with self.session() as session:
             session.query(KVStore).delete()
 
-    def get_proxy(self, key: str, default: Any = ENOVAL, tag: str = &#34;&#34;) -&gt; Proxy:
+    def get_proxy(
+        self, key: str, default: Any = ENOVAL, tag: str = DEFAULT_TAG
+    ) -&gt; Proxy:
         &#34;&#34;&#34;
         Returns a Proxy object for the given key, tag, default.
         &#34;&#34;&#34;
         return Proxy(self, key, default, tag)
 
     @retry_integrity_errors
-    def delete_tag(self, tag: str) -&gt; int:
+    def delete_tag(self, tag: str = DEFAULT_TAG) -&gt; int:
         &#34;&#34;&#34;
-        Deletes all keys under a given tag.
+        Deletes all keys under a given tag. Defaults to the default tag.
 
         Returns the number of keys deleted.
         &#34;&#34;&#34;
@@ -417,7 +425,7 @@ with an option to ensure the necessary db models are created.</p></div>
         self,
         key: str,
         default: Any = ENOVAL,
-        tag: str = &#34;&#34;,
+        tag: str = DEFAULT_TAG,
         return_expiration: bool = False,
     ) -&gt; Any:
         &#34;&#34;&#34;
@@ -449,7 +457,11 @@ with an option to ensure the necessary db models are created.</p></div>
 
     @retry_integrity_errors
     def set(
-        self, key: str, value: Any, tag: str = &#34;&#34;, expire: ExpirationType = None
+        self,
+        key: str,
+        value: Any,
+        tag: str = DEFAULT_TAG,
+        expire: ExpirationType = None,
     ) -&gt; None:
         &#34;&#34;&#34;
         Sets the given key/tag combo to the value provided.
@@ -463,7 +475,7 @@ with an option to ensure the necessary db models are created.</p></div>
             )
 
     @retry_integrity_errors
-    def delete(self, key: str, tag: str = &#34;&#34;) -&gt; None:
+    def delete(self, key: str, tag: str = DEFAULT_TAG) -&gt; None:
         &#34;&#34;&#34;
         Deletes the given key/tag combo from the store.
         &#34;&#34;&#34;
@@ -478,7 +490,7 @@ with an option to ensure the necessary db models are created.</p></div>
             if result is not None:
                 session.delete(result)
 
-    def pop(self, key: str, default: Any = ENOVAL, tag: str = &#34;&#34;) -&gt; None:
+    def pop(self, key: str, default: Any = ENOVAL, tag: str = DEFAULT_TAG) -&gt; None:
         &#34;&#34;&#34;
         Pops the given key/tag combo from the store.
 
@@ -506,16 +518,18 @@ with an option to ensure the necessary db models are created.</p></div>
         with self.session() as session:
             session.query(KVStore).delete()
 
-    def get_proxy(self, key: str, default: Any = ENOVAL, tag: str = &#34;&#34;) -&gt; Proxy:
+    def get_proxy(
+        self, key: str, default: Any = ENOVAL, tag: str = DEFAULT_TAG
+    ) -&gt; Proxy:
         &#34;&#34;&#34;
         Returns a Proxy object for the given key, tag, default.
         &#34;&#34;&#34;
         return Proxy(self, key, default, tag)
 
     @retry_integrity_errors
-    def delete_tag(self, tag: str) -&gt; int:
+    def delete_tag(self, tag: str = DEFAULT_TAG) -&gt; int:
         &#34;&#34;&#34;
-        Deletes all keys under a given tag.
+        Deletes all keys under a given tag. Defaults to the default tag.
 
         Returns the number of keys deleted.
         &#34;&#34;&#34;
@@ -630,7 +644,7 @@ def clear(self) -&gt; None:
 </details>
 </dd>
 <dt id="kvalchemy.client.KVAlchemy.delete"><code class="name flex">
-<span>def <span class="ident">delete</span></span>(<span>self, key: str, tag: str = '') ‑> None</span>
+<span>def <span class="ident">delete</span></span>(<span>self, key: str, tag: str = '__default__') ‑> None</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Deletes the given key/tag combo from the store.</p></div>
@@ -639,7 +653,7 @@ def clear(self) -&gt; None:
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@retry_integrity_errors
-def delete(self, key: str, tag: str = &#34;&#34;) -&gt; None:
+def delete(self, key: str, tag: str = DEFAULT_TAG) -&gt; None:
     &#34;&#34;&#34;
     Deletes the given key/tag combo from the store.
     &#34;&#34;&#34;
@@ -656,19 +670,19 @@ def delete(self, key: str, tag: str = &#34;&#34;) -&gt; None:
 </details>
 </dd>
 <dt id="kvalchemy.client.KVAlchemy.delete_tag"><code class="name flex">
-<span>def <span class="ident">delete_tag</span></span>(<span>self, tag: str) ‑> int</span>
+<span>def <span class="ident">delete_tag</span></span>(<span>self, tag: str = '__default__') ‑> int</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Deletes all keys under a given tag.</p>
+<div class="desc"><p>Deletes all keys under a given tag. Defaults to the default tag.</p>
 <p>Returns the number of keys deleted.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@retry_integrity_errors
-def delete_tag(self, tag: str) -&gt; int:
+def delete_tag(self, tag: str = DEFAULT_TAG) -&gt; int:
     &#34;&#34;&#34;
-    Deletes all keys under a given tag.
+    Deletes all keys under a given tag. Defaults to the default tag.
 
     Returns the number of keys deleted.
     &#34;&#34;&#34;
@@ -677,7 +691,7 @@ def delete_tag(self, tag: str) -&gt; int:
 </details>
 </dd>
 <dt id="kvalchemy.client.KVAlchemy.get"><code class="name flex">
-<span>def <span class="ident">get</span></span>(<span>self, key: str, default: Any = &lt;object object&gt;, tag: str = '', return_expiration: bool = False) ‑> Any</span>
+<span>def <span class="ident">get</span></span>(<span>self, key: str, default: Any = &lt;object object&gt;, tag: str = '__default__', return_expiration: bool = False) ‑> Any</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Retrieves the value for the given key and tag.</p>
@@ -693,7 +707,7 @@ def get(
     self,
     key: str,
     default: Any = ENOVAL,
-    tag: str = &#34;&#34;,
+    tag: str = DEFAULT_TAG,
     return_expiration: bool = False,
 ) -&gt; Any:
     &#34;&#34;&#34;
@@ -725,7 +739,7 @@ def get(
 </details>
 </dd>
 <dt id="kvalchemy.client.KVAlchemy.get_proxy"><code class="name flex">
-<span>def <span class="ident">get_proxy</span></span>(<span>self, key: str, default: Any = &lt;object object&gt;, tag: str = '') ‑> <a title="kvalchemy.proxy.Proxy" href="proxy.html#kvalchemy.proxy.Proxy">Proxy</a></span>
+<span>def <span class="ident">get_proxy</span></span>(<span>self, key: str, default: Any = &lt;object object&gt;, tag: str = '__default__') ‑> <a title="kvalchemy.proxy.Proxy" href="proxy.html#kvalchemy.proxy.Proxy">Proxy</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns a Proxy object for the given key, tag, default.</p></div>
@@ -733,7 +747,9 @@ def get(
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_proxy(self, key: str, default: Any = ENOVAL, tag: str = &#34;&#34;) -&gt; Proxy:
+<pre><code class="python">def get_proxy(
+    self, key: str, default: Any = ENOVAL, tag: str = DEFAULT_TAG
+) -&gt; Proxy:
     &#34;&#34;&#34;
     Returns a Proxy object for the given key, tag, default.
     &#34;&#34;&#34;
@@ -846,7 +862,7 @@ If it is False, we will save the value to the cache as per normal.</p></div>
 </details>
 </dd>
 <dt id="kvalchemy.client.KVAlchemy.pop"><code class="name flex">
-<span>def <span class="ident">pop</span></span>(<span>self, key: str, default: Any = &lt;object object&gt;, tag: str = '') ‑> None</span>
+<span>def <span class="ident">pop</span></span>(<span>self, key: str, default: Any = &lt;object object&gt;, tag: str = '__default__') ‑> None</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Pops the given key/tag combo from the store.</p>
@@ -856,7 +872,7 @@ default value is returned. If no default is provided, a KeyError is raised.</p><
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def pop(self, key: str, default: Any = ENOVAL, tag: str = &#34;&#34;) -&gt; None:
+<pre><code class="python">def pop(self, key: str, default: Any = ENOVAL, tag: str = DEFAULT_TAG) -&gt; None:
     &#34;&#34;&#34;
     Pops the given key/tag combo from the store.
 
@@ -918,7 +934,7 @@ def session(
 </details>
 </dd>
 <dt id="kvalchemy.client.KVAlchemy.set"><code class="name flex">
-<span>def <span class="ident">set</span></span>(<span>self, key: str, value: Any, tag: str = '', expire: Union[ForwardRef(None), int, float, datetime.timedelta, datetime.datetime] = None) ‑> None</span>
+<span>def <span class="ident">set</span></span>(<span>self, key: str, value: Any, tag: str = '__default__', expire: Union[ForwardRef(None), int, float, datetime.timedelta, datetime.datetime] = None) ‑> None</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Sets the given key/tag combo to the value provided.</p>
@@ -930,7 +946,11 @@ the to_expire function in kvalchemy.time.</p></div>
 </summary>
 <pre><code class="python">@retry_integrity_errors
 def set(
-    self, key: str, value: Any, tag: str = &#34;&#34;, expire: ExpirationType = None
+    self,
+    key: str,
+    value: Any,
+    tag: str = DEFAULT_TAG,
+    expire: ExpirationType = None,
 ) -&gt; None:
     &#34;&#34;&#34;
     Sets the given key/tag combo to the value provided.

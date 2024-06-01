@@ -32,7 +32,7 @@ Home to models for KVAlchemy.
 &#34;&#34;&#34;
 from datetime import datetime
 
-from sqlalchemy import Column, ColumnElement, UniqueConstraint, or_
+from sqlalchemy import Column, ColumnElement, PrimaryKeyConstraint, event, or_
 from sqlalchemy.dialects.mysql import LONGBLOB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import LargeBinary, PickleType, Unicode
@@ -71,10 +71,10 @@ class KVStore(Base, ValueMixIn):
 
     __tablename__ = &#34;kvstore&#34;
 
-    __table_args__ = (UniqueConstraint(&#34;key&#34;, &#34;tag&#34;, name=&#34;key_tag_unique&#34;),)
+    __table_args__ = (PrimaryKeyConstraint(&#34;key&#34;, &#34;tag&#34;, name=&#34;key_tag_unique&#34;),)
 
-    key: Mapped[str] = Column(Unicode(KEY_MAX_LENGTH), primary_key=True)
-    tag: Mapped[str] = Column(Unicode(TAG_MAX_LENGTH), primary_key=True)
+    key: Mapped[str] = Column(Unicode(KEY_MAX_LENGTH))
+    tag: Mapped[str] = Column(Unicode(TAG_MAX_LENGTH))
 
     # Naive datetime (though expected to be UTC)
     expire: Mapped[datetime] = mapped_column(nullable=True)
@@ -164,10 +164,10 @@ for example, any mapped columns or relationships.</p></div>
 
     __tablename__ = &#34;kvstore&#34;
 
-    __table_args__ = (UniqueConstraint(&#34;key&#34;, &#34;tag&#34;, name=&#34;key_tag_unique&#34;),)
+    __table_args__ = (PrimaryKeyConstraint(&#34;key&#34;, &#34;tag&#34;, name=&#34;key_tag_unique&#34;),)
 
-    key: Mapped[str] = Column(Unicode(KEY_MAX_LENGTH), primary_key=True)
-    tag: Mapped[str] = Column(Unicode(TAG_MAX_LENGTH), primary_key=True)
+    key: Mapped[str] = Column(Unicode(KEY_MAX_LENGTH))
+    tag: Mapped[str] = Column(Unicode(TAG_MAX_LENGTH))
 
     # Naive datetime (though expected to be UTC)
     expire: Mapped[datetime] = mapped_column(nullable=True)
