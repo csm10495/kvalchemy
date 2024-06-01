@@ -1,5 +1,7 @@
 # KVAlchemy
 
+[![PyPI version](https://badge.fury.io/py/kvalchemy.svg)](https://badge.fury.io/py/kvalchemy)
+
 KVAlchemy is a SQLAlchemy-based key-vault store. It has the ability to get/set values based off a string key, an optional string tag, and an optional expiration time. Additionally it has a built-in ability to memoize function results to the store.
 
 ## Example
@@ -56,6 +58,11 @@ Though Version 0.1.0 may not be directly compatible without a manual data migrat
 
 Make sure to pin the version family you want: kvalachemy<X.(Y+1).0
 ```
+
+## Testing
+KVAlchemy is tested across multiple database backends including MySQL, Postgres, SQLite, and Oracle.
+
+[![Run tests and release](https://github.com/csm10495/kvalchemy/actions/workflows/test_and_release.yml/badge.svg)](https://github.com/csm10495/kvalchemy/actions/workflows/test_and_release.yml)
 
 ## More Documentation
 

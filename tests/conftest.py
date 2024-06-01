@@ -1,21 +1,21 @@
 import atexit
 import logging
-import os
 import shutil
+import socket
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import List
 
 import backoff
 import pytest
+from func_timeout import FunctionTimedOut, func_set_timeout
 from sqlalchemy import create_engine, inspect
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DatabaseError, OperationalError
 
 from kvalchemy import KVAlchemy, KVStore
 
 log = logging.getLogger(__name__)
-
-DOCKER_MYSQL_URL = "mysql+pymysql://test:test@localhost:52000/test?charset=utf8mb4"
 
 
 @lru_cache(maxsize=None)
@@ -37,51 +37,94 @@ def has_docker() -> bool:
     return False
 
 
-@lru_cache(maxsize=None)
-def _start_mysqld_docker() -> None:
-    """
-    Starts the mysqld docker container
-    """
-    if os.getenv("GITHUB_ACTIONS"):
-        name_param = ""
-    else:
-        name_param = "--name kvalchemy-mysqld"
-    # start container
-    subprocess.run(
-        f'docker run {name_param} -e "MYSQL_ALLOW_EMPTY_PASSWORD=1" -e "MYSQL_PASSWORD=test" -e "MYSQL_USER=test" -e "MYSQL_DATABASE=test" -d -p 52000:3306 mysql:8',
-        shell=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    ).check_returncode()
-    atexit.register(_stop_mysqld_docker)
-    _wait_for_mysql_stability()
+class StartOnceStopAtExitDockerContainer:
+    RUN_CMD: str
+    SQL_URL: str
 
+    def __init__(self) -> None:
+        """Initializer. Gets a likely free port, updates RUN_CMD/SQL_URL with it."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("", 0))
+            self._port = s.getsockname()[1]
 
-def _stop_mysqld_docker() -> None:
-    """
-    Stops the mysqld docker container if it is running
-    """
-    subprocess.run(
-        "docker remove kvalchemy-mysqld -f",
-        shell=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        self.RUN_CMD = self.RUN_CMD.format(port=self._port)
+        self.SQL_URL = self.SQL_URL.format(port=self._port)
+
+    def _start_container(self) -> None:
+        """Starts the docker container. Raises if it doesn't start correctly"""
+
+        result = subprocess.run(
+            f"docker run {self.RUN_CMD}", shell=True, capture_output=True
+        )
+        result.check_returncode()
+        self._container_id = result.stdout.decode().strip()
+
+    def _stop_container(self) -> None:
+        """
+        Stops the docker container if it is running
+        """
+        subprocess.run(
+            f"docker remove {self._container_id} -f",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    @backoff.on_exception(
+        backoff.constant,
+        (DatabaseError, OperationalError, ConnectionAbortedError, FunctionTimedOut),
+        max_tries=200,
+        jitter=None,
+        interval=0.5,
+        logger=log,
+        backoff_log_level=logging.DEBUG,
     )
+    @func_set_timeout(3)
+    def _wait_for_sql_stability(self):
+        """
+        Continually tries to connect to the mysql server until its fully ready
+
+        Specifically wrapping with func_set_timeout because inspect() can hang if the server isn't ready.. in mssql for some reason.
+        """
+        engine = create_engine(self.SQL_URL)
+        inspect(engine).get_table_names()
+
+    def start(self) -> str | None:
+        """
+        Returns sqlalchemy url after starting the container and waiting for stability.
+        Returns None if we can't use docker.
+        """
+        if not has_docker():
+            return None
+
+        self._start_container()
+        atexit.register(self._stop_container)
+        self._wait_for_sql_stability()
+        return self.SQL_URL
 
 
-@backoff.on_exception(
-    backoff.constant, (OperationalError), max_tries=100, jitter=None, interval=0.5
-)
-def _wait_for_mysql_stability():
-    """
-    Continually tries to connect to the mysql server unitl its fully ready
-    """
-    engine = create_engine(DOCKER_MYSQL_URL)
-    inspect(engine).get_table_names()
+class DockerMySQL(StartOnceStopAtExitDockerContainer):
+    RUN_CMD = '-e "MYSQL_ALLOW_EMPTY_PASSWORD=1" -e "MYSQL_PASSWORD=test" -e "MYSQL_USER=test" -e "MYSQL_DATABASE=test" -d -p {port}:3306 mysql:8'
+    SQL_URL = "mysql+pymysql://test:test@localhost:{port}/test?charset=utf8mb4"
+
+
+class DockerPostgres(StartOnceStopAtExitDockerContainer):
+    RUN_CMD = '-e "POSTGRES_PASSWORD=test" -e "POSTGRES_USER=test" -e "POSTGRES_DB=test" -d -p {port}:5432 postgres:16'
+    SQL_URL = "postgresql+psycopg2://test:test@localhost:{port}/test"
+
+
+class DockerMSSQL(StartOnceStopAtExitDockerContainer):
+    RUN_CMD = '-e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=testTest1" -p {port}:1433 -d mcr.microsoft.com/mssql/server:2022-latest'
+    SQL_URL = "mssql+pymssql://sa:testTest1@localhost:{port}/?charset=utf8"
+
+
+class DockerOracle(StartOnceStopAtExitDockerContainer):
+    RUN_CMD = '-e "ORACLE_PASSWORD=test" -e "ORACLE_DATABASE=test" -e "APP_USER=test" -e "APP_USER_PASSWORD=test" -p {port}:1521 -d gvenzl/oracle-free:23-faststart'
+    SQL_URL = "oracle+oracledb://test:test@localhost:{port}/?service_name=test"
 
 
 @lru_cache(maxsize=None)
-def get_sqlalchemy_urls(pytestconfig) -> List[str]:
+def _get_sqlalchemy_urls(sqlite_only: bool = False) -> List[str]:
     """
     Used to parameterize our testing.
     If we have docker available, sets up a mysqld container for our testing.
@@ -90,15 +133,22 @@ def get_sqlalchemy_urls(pytestconfig) -> List[str]:
     """
     urls = ["sqlite:///:memory:"]
 
-    if pytestconfig.getoption("--sqlite-only"):
+    if sqlite_only:
         log.info("Skipping mysql setup because of sqlite-only")
     elif not has_docker():
         log.warning("Docker not available, not adding tests that require it.")
     else:
-        # don't care if this succeeds or not
-        _stop_mysqld_docker()
-        _start_mysqld_docker()
-        urls.append(DOCKER_MYSQL_URL)
+        dbs = [DockerMySQL, DockerPostgres, DockerMSSQL, DockerOracle]
+        results = []
+
+        with ThreadPoolExecutor() as executor:
+            for db in dbs:
+                d = db()
+                results.append(executor.submit(d.start))
+
+        urls += [r.result() for r in results if r.result()]
+
+    assert None not in urls, "Something went wrong with setup"
 
     return urls
 
@@ -110,13 +160,15 @@ def kvalchemy(request):
 
     After testing, cleans the database.
     """
+    kva = None
     try:
         kva = KVAlchemy(request.param)
         yield kva
     finally:
-        # Ensure that each test ends with a clean db.
-        with kva.session() as session:
-            session.query(KVStore).delete()
+        if kva:
+            # Ensure that each test ends with a clean db.
+            with kva.session() as session:
+                session.query(KVStore).delete()
 
 
 @pytest.fixture(scope="function")
@@ -127,15 +179,16 @@ def kvstore():
     yield KVStore(
         key="key",
         value="value",
-        tag="",
+        tag=" ",
     )
 
 
 def pytest_generate_tests(metafunc):
+    sqlite_only = metafunc.config.getoption("--sqlite-only")
+    urls = _get_sqlalchemy_urls(sqlite_only)
+
     if "kvalchemy" in metafunc.fixturenames:
-        metafunc.parametrize(
-            "kvalchemy", get_sqlalchemy_urls(metafunc.config), indirect=True
-        )
+        metafunc.parametrize("kvalchemy", urls, indirect=True)
 
 
 def pytest_addoption(parser):

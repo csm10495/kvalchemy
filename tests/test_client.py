@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from kvalchemy import KVAlchemy
+from kvalchemy.client import DEFAULT_TAG
 from kvalchemy.models import KVStore
 from kvalchemy.time import db_now
 
@@ -41,16 +42,16 @@ def test_session_commit_true_delete_expired_false(kvalchemy, kvstore):
             KVStore(
                 key="key2",
                 value="value2",
-                tag="",
+                tag=" ",
                 expire=(db_now() - timedelta(days=1)),
             )
         )
 
     with kvalchemy.session() as session:
-        result = session.query(KVStore).filter_by(key="key", tag="").one()
+        result = session.query(KVStore).filter_by(key="key", tag=" ").one()
         assert result.value == "value"
 
-        result = session.query(KVStore).filter_by(key="key2", tag="").one()
+        result = session.query(KVStore).filter_by(key="key2", tag=" ").one()
         assert result.value == "value2"
 
         assert session.query(KVStore).count() == 2
@@ -63,13 +64,13 @@ def test_session_commit_true_delete_expired_true(kvalchemy, kvstore):
             KVStore(
                 key="key2",
                 value="value2",
-                tag="",
+                tag=" ",
                 expire=(db_now() - timedelta(days=1)),
             )
         )
 
     with kvalchemy.session() as session:
-        result = session.query(KVStore).filter_by(key="key", tag="").one()
+        result = session.query(KVStore).filter_by(key="key", tag=" ").one()
         assert result.value == "value"
         assert session.query(KVStore).count() == 1
 
@@ -100,7 +101,7 @@ def test_session_commit_false(kvalchemy, kvstore):
         session.add(kvstore)
 
     with kvalchemy.session() as session:
-        result = session.query(KVStore).filter_by(key="key", tag="").one_or_none()
+        result = session.query(KVStore).filter_by(key="key", tag=" ").one_or_none()
         assert result is None
 
 
@@ -117,7 +118,7 @@ def test_get_expired_no_default(kvalchemy):
     with kvalchemy.session() as session:
         session.add(
             KVStore(
-                key="key", value="value", tag="", expire=(db_now() - timedelta(days=1))
+                key="key", value="value", tag=" ", expire=(db_now() - timedelta(days=1))
             )
         )
 
@@ -129,7 +130,7 @@ def test_get_expired_default(kvalchemy):
     with kvalchemy.session() as session:
         session.add(
             KVStore(
-                key="key", value="value", tag="", expire=(db_now() - timedelta(days=1))
+                key="key", value="value", tag=" ", expire=(db_now() - timedelta(days=1))
             )
         )
 
@@ -179,11 +180,11 @@ def test_iter(kvalchemy):
 
     assert items[0].key == "a"
     assert items[0].value == "value"
-    assert items[0].tag == ""
+    assert items[0].tag == DEFAULT_TAG
 
     assert items[1].key == "b"
     assert items[1].value == "value2"
-    assert items[1].tag == ""
+    assert items[1].tag == DEFAULT_TAG
 
     assert items[2].key == "b"
     assert items[2].value == "value3"
@@ -265,6 +266,15 @@ def test_delete_tag(kvalchemy):
     assert kvalchemy.delete_tag("tag2") == 1
     assert len(kvalchemy) == 0
     assert kvalchemy.delete_tag("tag3") == 0
+
+
+def test_delete_default_tag(kvalchemy):
+    kvalchemy.set("test", 123)
+    kvalchemy.set("hello", "world")
+    assert len(kvalchemy) == 2
+
+    assert kvalchemy.delete_tag() == 2
+    assert len(kvalchemy) == 0
 
 
 def test_memoize_simple(kvalchemy):

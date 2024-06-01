@@ -22,7 +22,9 @@ documentation  = "https://csm10495.github.io/kvalchemy"
 
 [project.optional-dependencies]
 dev = [
+    "psycopg2",
     "PyMySQL[rsa]",
+    "pymssql",
     "pytest"
 ]
 

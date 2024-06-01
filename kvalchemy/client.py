@@ -22,6 +22,8 @@ retry_integrity_errors = backoff.on_exception(
     backoff.constant, IntegrityError, interval=0.1, max_time=30
 )
 
+DEFAULT_TAG = "__default__"
+
 
 class KVAlchemy:
     """
@@ -98,7 +100,7 @@ class KVAlchemy:
         self,
         key: str,
         default: Any = ENOVAL,
-        tag: str = "",
+        tag: str = DEFAULT_TAG,
         return_expiration: bool = False,
     ) -> Any:
         """
@@ -130,7 +132,11 @@ class KVAlchemy:
 
     @retry_integrity_errors
     def set(
-        self, key: str, value: Any, tag: str = "", expire: ExpirationType = None
+        self,
+        key: str,
+        value: Any,
+        tag: str = DEFAULT_TAG,
+        expire: ExpirationType = None,
     ) -> None:
         """
         Sets the given key/tag combo to the value provided.
@@ -144,7 +150,7 @@ class KVAlchemy:
             )
 
     @retry_integrity_errors
-    def delete(self, key: str, tag: str = "") -> None:
+    def delete(self, key: str, tag: str = DEFAULT_TAG) -> None:
         """
         Deletes the given key/tag combo from the store.
         """
@@ -159,7 +165,7 @@ class KVAlchemy:
             if result is not None:
                 session.delete(result)
 
-    def pop(self, key: str, default: Any = ENOVAL, tag: str = "") -> None:
+    def pop(self, key: str, default: Any = ENOVAL, tag: str = DEFAULT_TAG) -> None:
         """
         Pops the given key/tag combo from the store.
 
@@ -187,16 +193,18 @@ class KVAlchemy:
         with self.session() as session:
             session.query(KVStore).delete()
 
-    def get_proxy(self, key: str, default: Any = ENOVAL, tag: str = "") -> Proxy:
+    def get_proxy(
+        self, key: str, default: Any = ENOVAL, tag: str = DEFAULT_TAG
+    ) -> Proxy:
         """
         Returns a Proxy object for the given key, tag, default.
         """
         return Proxy(self, key, default, tag)
 
     @retry_integrity_errors
-    def delete_tag(self, tag: str) -> int:
+    def delete_tag(self, tag: str = DEFAULT_TAG) -> int:
         """
-        Deletes all keys under a given tag.
+        Deletes all keys under a given tag. Defaults to the default tag.
 
         Returns the number of keys deleted.
         """
