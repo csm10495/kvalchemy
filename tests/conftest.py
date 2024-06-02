@@ -4,6 +4,7 @@ import shutil
 import socket
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import List, Optional
 
@@ -35,6 +36,23 @@ def has_docker() -> bool:
             return proc.returncode == 0
 
     return False
+
+
+@dataclass
+class StartInfo:
+    """
+    Dataclass to hold some info about the started db
+    """
+
+    url: str
+    db_type: str
+
+    @classmethod
+    def get_sqlite_instance(cls) -> "StartInfo":
+        """
+        Returns a StartInfo instance for sqlite
+        """
+        return cls(url="sqlite:///:memory:", db_type="sqlite")
 
 
 class StartOnceStopAtExitDockerContainer:
@@ -82,14 +100,14 @@ class StartOnceStopAtExitDockerContainer:
     @func_set_timeout(3)
     def _wait_for_sql_stability(self):
         """
-        Continually tries to connect to the mysql server until its fully ready
+        Continually tries to connect to the sql server until its fully ready
 
         Specifically wrapping with func_set_timeout because inspect() can hang if the server isn't ready.. in mssql for some reason.
         """
         engine = create_engine(self.SQL_URL)
         inspect(engine).get_table_names()
 
-    def start(self) -> Optional[str]:
+    def start(self) -> Optional[StartInfo]:
         """
         Returns sqlalchemy url after starting the container and waiting for stability.
         Returns None if we can't use docker.
@@ -100,11 +118,25 @@ class StartOnceStopAtExitDockerContainer:
         self._start_container()
         atexit.register(self._stop_container)
         self._wait_for_sql_stability()
-        return self.SQL_URL
+
+        return StartInfo(url=self.SQL_URL, db_type=self.get_db_type())
+
+    def get_db_type(self) -> str:
+        """
+        Returns the type of database we're testing against
+
+        Relies on the naming of the class
+        """
+        return type(self).__name__.split("Docker")[1].lower()
 
 
 class DockerMySQL(StartOnceStopAtExitDockerContainer):
     RUN_CMD = '-e "MYSQL_ALLOW_EMPTY_PASSWORD=1" -e "MYSQL_PASSWORD=test" -e "MYSQL_USER=test" -e "MYSQL_DATABASE=test" -d -p {port}:3306 mysql:8'
+    SQL_URL = "mysql+pymysql://test:test@localhost:{port}/test?charset=utf8mb4"
+
+
+class DockerMariaDB(StartOnceStopAtExitDockerContainer):
+    RUN_CMD = '-e "MARIADB_ROOT_PASSWORD=test" -e "MARIADB_PASSWORD=test" -e "MARIADB_USER=test" -e "MARIADB_DATABASE=test" -d -p {port}:3306 mariadb:11.4-noble'
     SQL_URL = "mysql+pymysql://test:test@localhost:{port}/test?charset=utf8mb4"
 
 
@@ -124,21 +156,21 @@ class DockerOracle(StartOnceStopAtExitDockerContainer):
 
 
 @lru_cache(maxsize=None)
-def _get_sqlalchemy_urls(sqlite_only: bool = False) -> List[str]:
+def _get_sqlalchemy_start_infos(sqlite_only: bool = False) -> List[StartInfo]:
     """
     Used to parameterize our testing.
-    If we have docker available, sets up a mysqld container for our testing.
+    If we have docker available, sets up a sql containers for our testing.
 
-    Returns a list of sqlalchemy urls to test against.
+    Returns a list of sqlalchemy info to test against.
     """
-    urls = ["sqlite:///:memory:"]
+    start_infos = [StartInfo.get_sqlite_instance()]
 
     if sqlite_only:
-        log.info("Skipping mysql setup because of sqlite-only")
+        log.info("Skipping docker setup because of sqlite-only")
     elif not has_docker():
         log.warning("Docker not available, not adding tests that require it.")
     else:
-        dbs = [DockerMySQL, DockerPostgres, DockerMSSQL, DockerOracle]
+        dbs = [DockerMySQL, DockerMariaDB, DockerPostgres, DockerMSSQL, DockerOracle]
         results = []
 
         with ThreadPoolExecutor() as executor:
@@ -146,11 +178,11 @@ def _get_sqlalchemy_urls(sqlite_only: bool = False) -> List[str]:
                 d = db()
                 results.append(executor.submit(d.start))
 
-        urls += [r.result() for r in results if r.result()]
+        start_infos += [r.result() for r in results if r.result()]
 
-    assert None not in urls, "Something went wrong with setup"
+    assert None not in start_infos, "Something went wrong with setup"
 
-    return urls
+    return start_infos
 
 
 @pytest.fixture(scope="function")
@@ -185,10 +217,15 @@ def kvstore():
 
 def pytest_generate_tests(metafunc):
     sqlite_only = metafunc.config.getoption("--sqlite-only")
-    urls = _get_sqlalchemy_urls(sqlite_only)
+    start_infos = _get_sqlalchemy_start_infos(sqlite_only)
 
     if "kvalchemy" in metafunc.fixturenames:
-        metafunc.parametrize("kvalchemy", urls, indirect=True)
+        metafunc.parametrize(
+            "kvalchemy",
+            [s.url for s in start_infos],
+            ids=[s.db_type for s in start_infos],
+            indirect=True,
+        )
 
 
 def pytest_addoption(parser):
